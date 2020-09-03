@@ -1,0 +1,25 @@
+    Private Sub Button1_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles Button1.Click
+        If TextBox2.Text <> "" And TextBox3.Text <> "" Then
+            If IsNumeric(Int(TextBox2.Text)) And IsNumeric(Int(TextBox3.Text)) And _
+                Int(TextBox2.Text) <= Int(TextBox3.Text) Then
+                Dim start As Integer = Int(TextBox2.Text)
+                Dim finish As Integer = Int(TextBox3.Text)
+                Dim i As Integer = start
+                Dim output As String = ""
+
+                While i <= finish
+                    output = output & "[page " & i & "]" & vbCrLf & vbCrLf & vbCrLf & vbCrLf
+                    i = i + 1
+                End While
+
+                output = output & vbCrLf & vbCrLf & vbCrLf & vbCrLf & vbCrLf & vbCrLf
+                TextBox1.Text = output
+                TextBox1.Focus()
+                TextBox1.SelectAll()
+
+
+            End If
+        End If
+        On Error Resume Next
+    End Sub
+

@@ -1,0 +1,74 @@
+Sub conv()
+
+    'declarations
+    'Dim cols As String
+    cols = Array("A", "C", "F")  '### indices are 0-2
+    Dim currentcol As Integer
+    Dim currentrow As Integer
+    currentcol = 0
+    currentrow = 2
+   
+    Dim monthmatch As String
+    Dim datematch As String
+    Dim yearmatch As String
+    monthmatch = "[A-Za-z]+"
+    datematch = "[0-9]+"
+    yearmatch = "[0-9]+$"
+    cal = Array("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+
+    Dim monthnum As Integer
+    Dim datenum As Integer
+    Dim yearnum As Integer
+
+    'getting ready to use regex
+    Dim obj As Object
+    Dim matches As Object
+    Set obj = CreateObject("vbscript.regexp")
+    obj.Global = isglobal
+
+
+    Dim emptyrows As Integer
+    emptyrows = 0
+    'dim fail as boolean 'error handling not used
+    'fail = false
+   
+    Do While emptyrow < 6
+        currentcol = 0
+        Range(cols(currentcol) & currentrow).Select
+        If ActiveCell.FormulaR1C1 <> "" Then 'if the first cell in this row ain't empty
+            emptyrow = 0
+            'for each col in this row
+            For currentcol = 0 To 2
+                'make sure this cell isn't already edited
+                Range(cols(currentcol) & currentrow).Select
+                If Selection.NumberFormat <> "dd/mm/yyyy;@" Then
+               
+                    'regex to look up month then edit current cell cols(currentcol) & currentrow
+                    obj.Pattern = monthmatch
+                    Set matches = obj.Execute(Range(cols(currentcol) & currentrow).Value) 'i.e concat(col,row)
+                    monthnum = Application.match(matches.Item(0), cal, False)
+                   
+                    obj.Pattern = datematch
+                    Set matches = obj.Execute(Range(cols(currentcol) & currentrow).Value)
+                    datenum = matches.Item(0)
+                   
+                    obj.Pattern = yearmatch
+                    Set matches = obj.Execute(Range(cols(currentcol) & currentrow).Value)
+                    yearnum = matches.Item(0)
+                   
+                    'edit cell
+                    ActiveCell.FormulaR1C1 = datenum & "/" & monthnum & "/" & yearnum '###
+                    Selection.NumberFormat = "dd/mm/yyyy;@"
+                    'Debug.Print ("month: " & monthnum & ", date: " & datenum & ", year: " & yearnum)
+                'Else
+                '   Debug.Print (cols(currentcol) & currentrow & " already edited")
+                End If
+            Next
+        Else 'if the first cell in this row is empty
+            emptyrow = emptyrow + 1
+        End If
+        currentrow = currentrow + 1
+    Loop
+    Debug.Print (Now())
+     
+End Sub

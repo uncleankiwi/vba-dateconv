@@ -1,0 +1,24 @@
+Sub split()
+    'note:  tools > references > microsoft vbscript regular expressions
+   
+    Dim str As String
+    str = Range("A1").FormulaR1C1
+   
+    'Dim obj As Object
+    'Set obj = CreateObject("vbscript.regexp")
+    Dim obj As New VBScript_RegExp_55.RegExp 'an alternative to above two lines
+    Dim matches As Object
+
+    obj.Global = True 'more than the first occurrence
+    obj.Pattern = "[\S]+"
+    Set matches = obj.Execute(str)
+   
+    Range("B2").Select
+    Dim i As Integer
+
+    For i = 0 To matches.Count - 1
+        ActiveCell.FormulaR1C1 = matches.Item(i)
+        ActiveCell.Offset(1, 1).Select
+    Next
+
+End Sub

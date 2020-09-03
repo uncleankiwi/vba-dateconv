@@ -1,0 +1,167 @@
+Sub conv()
+
+    'Warning: this script will not return an error if date does not exist. For example, jun.31, 2013 will give
+    '6/31/2013, and not 31-Jun-2013. There will be no error.
+    'note to self: caseif would handle exceptions (back order, b/o) better than array
+    'features not in here: adding array of rows that user can skip, and ignoring "Back order", "BO", "B/O"
+
+
+    'declarations
+    'Dim cols As String
+    Dim dateformat As String
+    cols = Array("B", "G", "J")  '### indices are 0-2
+    dateformat = "[$-409]d-mmm-yyyy;@" '###
+    
+    Dim currentcol As Integer
+    Dim currentrow As Integer
+    currentcol = 0
+    currentrow = 7 '### starting line
+    
+    Dim monthmatch As String
+    Dim datematch As String
+    Dim yearmatch As String
+    monthmatch = "[A-Za-z]{3}" '"[A-Za-z]+" will pull out too many characters and fail to match "sept"
+    datematch = "[0-9]+"
+    yearmatch = "[0-9]{4}(?=[A-Za-z\s]*$)" 'last 4 digits, ignoring extra letters/whitespace that might be there
+    cal = Array("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+
+    Dim monthnum As Integer
+    Dim datenum As Integer
+    Dim yearnum As Integer
+
+    'getting ready to use regex
+    Dim obj As Object
+    Dim matches As Object
+    Set obj = CreateObject("vbscript.regexp")
+    obj.Global = isglobal
+
+
+    Dim emptyrows As Integer
+    emptyrows = 0
+    Dim failedrow As Boolean 'one of the cells in this row failed. for counting failed rows
+    failedrow = False
+    Dim failedcell As Boolean 'this cell failed the first regex, so skip to next cell
+    failedcell = False
+    Dim failedrows As Integer
+    failedrows = 0
+    Dim failedcells As Integer
+    failedcells = 0
+    Dim failedarray() As Integer
+    ReDim failedarray(0 To 0) As Integer
+'    Dim failedstring As String
+    
+    Do While emptyrow < 6
+    
+        
+        
+        currentcol = 0
+        Range(cols(currentcol) & currentrow).Select
+        If Range(cols(0) & currentrow).FormulaR1C1 <> "" _
+        Or Range(cols(1) & currentrow).FormulaR1C1 <> "" _
+        Or Range(cols(2) & currentrow).FormulaR1C1 <> "" Then 'if all cells in this row aren't empty
+            emptyrow = 0
+            
+            'for each col in this row
+            failedrow = False 'this is a new row, so start marking anew
+            For currentcol = 0 To 2
+                
+                'make sure this cell isn't already edited
+                Range(cols(currentcol) & currentrow).Select
+                If Selection.NumberFormat <> dateformat Then
+                
+                    failedcell = False
+                    
+                    'regex to make cell empty if all it contains is one or more whitespaces
+                    obj.Pattern = "^\s+$"
+                    Set matches = obj.Execute(Range(cols(currentcol) & currentrow).Value)
+                    If matches.Count > 0 Then
+                        Range(cols(currentcol) & currentrow).FormulaR1C1 = ""
+                    End If
+                
+                    'regex to look up month then edit current cell cols(currentcol) & currentrow
+                    obj.Pattern = monthmatch
+                    Set matches = obj.Execute(Range(cols(currentcol) & currentrow).Value) 'i.e concat(col,row)
+                    
+                    If matches.Count > 0 Then
+                        If matches.Count > 0 And Not IsError(Application.match(matches.Item(0), cal, False)) Then 'if stuff can be found in calendar
+                            monthnum = Application.match(matches.Item(0), cal, False)
+                        Else 'failed because letters not in calendar
+                            failedcell = True 'skip to next cell
+                            failedcells = failedcells + 1
+                            If failedrow = False Then
+                                failedrow = True
+                                failedrows = failedrows + 1
+                                'failedstring = failedstring & currentrow & " "
+                                'stretch matrix
+                                ReDim Preserve failedarray(0 To UBound(failedarray) + 1) As Integer
+                                failedarray(UBound(failedarray)) = currentrow
+                                'Debug.Print ("Failed because not in cal!")
+                            End If
+                        End If
+                    Else 'failed because regex didn't pull anything out, i.e. empty/symbols/numbers
+                        failedcell = True
+                        If Range(cols(currentcol) & currentrow).FormulaR1C1 <> "" Then 'special case for empty cells - should skip rest of regex, but not count towards failedcells
+                            failedcells = failedcells + 1
+                            If failedrow = False Then
+                                failedrow = True
+                                failedrows = failedrows + 1
+                                'failedstring = failedstring & currentrow & " "
+                                'stretch matrix
+                                ReDim Preserve failedarray(0 To UBound(failedarray) + 1) As Integer
+                                failedarray(UBound(failedarray)) = currentrow
+                                'Debug.Print ("Failed because number!")
+                            End If
+                        End If
+                    End If
+                    
+                    If failedcell = False Then
+                        'continue on to regex date/year if month is in cell
+                        obj.Pattern = datematch
+                        Set matches = obj.Execute(Range(cols(currentcol) & currentrow).Value)
+                        datenum = matches.Item(0)
+                        
+                        obj.Pattern = yearmatch
+                        Set matches = obj.Execute(Range(cols(currentcol) & currentrow).Value)
+                        yearnum = matches.Item(0)
+                        
+                        'edit cell
+                        ActiveCell.FormulaR1C1 = monthnum & "/" & datenum & "/" & yearnum '###
+                        Selection.NumberFormat = dateformat
+                        'Debug.Print ("month: " & monthnum & ", date: " & datenum & ", year: " & yearnum)
+                    End If
+                'Else
+                '   Debug.Print (cols(currentcol) & currentrow & " already edited")
+                End If
+            Next
+        Else 'if all 3 cells in this row are empty
+            emptyrow = emptyrow + 1
+        End If
+        currentrow = currentrow + 1
+    Loop
+    
+'    Debug.Print (Now())
+'    Debug.Print ("Failed " & failedrows & " rows and " & failedcells & " cells")
+'    Debug.Print (failedstring)
+'    Dim temp As String
+'    currentrow = 1
+'    For currentrow = 1 To UBound(failedarray)
+'        temp = temp & failedarray(currentrow) & " "
+'    Next
+'    Debug.Print ("Rows: " & temp)
+
+    'browsing
+    If failedrows > 0 Then
+        If MsgBox("Failed " & failedrows & " rows and " & failedcells & " cells. Start browsing?", vbYesNo) = vbNo Then 'user doesn't want to browse!
+            Exit Sub
+        Else
+            'step through each boo-boo
+            currentrow = 1
+            For currentrow = 1 To UBound(failedarray)
+                Rows(failedarray(currentrow)).Select
+                If MsgBox("Boo-boo " & currentrow & " of " & failedrows & ". Keep browsing?", vbYesNo) = vbNo Then
+                    Exit Sub
+                End If
+            Next
+        End If
+    End If
+End Sub
